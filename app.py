@@ -2,11 +2,22 @@ import streamlit as st
 import pickle
 import pandas as pd
 import requests
-import time
 
-# ✅ TMDB API key (keep private for deployment)
+# ✅ TMDB API key
 api_key = 'ad3cceb1f043758f433fc7239c437141'
 
+# ✅ Load similarity matrix from Hugging Face
+@st.cache_data
+def load_similarity_from_huggingface():
+    url = "https://huggingface.co/datasets/varshasingh5556/movie-recommender/resolve/main/similarity.pkl"
+    response = requests.get(url)
+    return pickle.loads(response.content)
+
+similarity = load_similarity_from_huggingface()
+
+# ✅ Load movie dictionary
+movie_dict = pickle.load(open('movie_dict.pkl', 'rb'))
+movie = pd.DataFrame(movie_dict)
 
 # ✅ Fetch movie poster from TMDB
 def fetch_poster(movie_id):
@@ -20,13 +31,6 @@ def fetch_poster(movie_id):
     except requests.exceptions.RequestException as e:
         print(f"Poster fetch failed for movie_id {movie_id}: {e}")
     return "https://via.placeholder.com/500x750?text=No+Image"
-
-
-# ✅ Load data
-movie_dict = pickle.load(open('movie_dict.pkl', 'rb'))
-movie = pd.DataFrame(movie_dict)
-similarity = pickle.load(open('similarity.pkl', 'rb'))
-
 
 # ✅ Recommend movies based on similarity
 def recommend(selected_movie):
@@ -46,14 +50,12 @@ def recommend(selected_movie):
         index = i[0]
         movie_row = movie.iloc[index]
 
-        # Ensure ID is valid
         if 'id' not in movie_row or pd.isna(movie_row['id']):
             continue
 
         movie_id = int(movie_row['id'])
         poster_url = fetch_poster(movie_id)
 
-        # Skip if fallback placeholder is returned
         if "placeholder.com" in poster_url:
             continue
 
@@ -64,8 +66,6 @@ def recommend(selected_movie):
             break
 
     return recommended_movies, recommended_posters
-
-
 
 # ✅ Streamlit UI
 st.set_page_config(page_title="Movie Recommender", layout="wide")
